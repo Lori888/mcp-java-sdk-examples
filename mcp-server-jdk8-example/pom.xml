@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.cafe.example.mcp</groupId>
+        <artifactId>mcp-java-sdk-examples</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>mcp-server-jdk8-example</artifactId>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <mcp.sdk.version>0.10.0-jdk8</mcp.sdk.version>
+        <tomcat.version>9.0.96</tomcat.version>
+        <jackson.version>2.18.1</jackson.version>
+        <jsonschema-generator.version>4.28.0</jsonschema-generator.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp</artifactId>
+            <version>${mcp.sdk.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>${tomcat.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.victools</groupId>
+            <artifactId>jsonschema-generator</artifactId>
+            <version>${jsonschema-generator.version}</version>
+        </dependency>
+    </dependencies>
+</project>

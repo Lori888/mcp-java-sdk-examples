@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.cafe.example.mcp</groupId>
+    <artifactId>mcp-java-sdk-examples</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <modules>
+        <module>mcp-server-jdk8-example</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <lombok.version>1.18.34</lombok.version>
+        <logback.version>1.3.15</logback.version>
+        <!-- plugin versions -->
+        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
+                <!-- lombok is optional, but recommended for authoring recipes -->
+                <optional>true</optional>
+            </dependency>
+
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${logback.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>${maven-compiler-plugin.version}</version>
+            <configuration>
+                <compilerArgs>
+                    <compilerArg>-parameters</compilerArg>
+                </compilerArgs>
+                <!-- lombok is optional, but recommended for authoring recipes -->
+                <annotationProcessorPaths>
+                    <path>
+                        <groupId>org.projectlombok</groupId>
+                        <artifactId>lombok</artifactId>
+                        <version>${lombok.version}</version>
+                    </path>
+                </annotationProcessorPaths>
+            </configuration>
+            <executions>
+                <!-- Replacing default-compile as it is treated specially by Maven -->
+                <execution>
+                    <id>default-compile</id>
+                    <phase>none</phase>
+                </execution>
+                <!-- Replacing default-testCompile as it is treated specially by Maven -->
+                <execution>
+                    <id>default-testCompile</id>
+                    <phase>none</phase>
+                </execution>
+                <execution>
+                    <id>java-compile</id>
+                    <phase>compile</phase>
+                    <goals>
+                        <goal>compile</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>java-test-compile</id>
+                    <phase>test-compile</phase>
+                    <goals>
+                        <goal>testCompile</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        </plugins>
+    </build>
+</project>
