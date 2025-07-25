@@ -60,4 +60,14 @@ public @interface McpServerEndpoint {
      * 是否通知tools变更
      */
     boolean toolChangeNotification() default true;
+
+    /**
+     * 是否通知resources变更
+     */
+    boolean resourceChangeNotification() default true;
+
+    /**
+     * 是否通知prompt变更
+     */
+    boolean promptChangeNotification() default true;
 }

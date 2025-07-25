@@ -5,7 +5,6 @@ import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
-import io.modelcontextprotocol.server.transport.StreamableHttpServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import lombok.extern.slf4j.Slf4j;
@@ -28,10 +27,14 @@ import java.util.List;
 public class McpServer {
 
     private static final String MSG_REGISTER_TOOLS = "Registered tools: %d, notification: %s";
+    private static final String MSG_REGISTER_RESOURCES = "Registered resources: %d, notification: %s";
+    private static final String MSG_REGISTER_PROMPTS = "Registered prompts: %d, notification: %s";
     private static final String MCP_SERVLET_NAME = "mcpServlet";
 
     private final Object targetBean = new McpServerTool();
     private final McpServerProperties serverProperties = new McpServerProperties();
+    private final ResourceProvider resourceProvider = new ResourceProvider();
+    private final PromptProvider promptProvider = new PromptProvider();
 
     private Tomcat tomcat;
     private McpServerEndpoint mcpServerEndpoint;
@@ -72,6 +75,8 @@ public class McpServer {
         serverProperties.setSseMessageEndpoint(mcpServerEndpoint.sseMessageEndpoint());
         serverProperties.setMcpEndpoint(mcpServerEndpoint.mcpEndpoint());
         serverProperties.setToolChangeNotification(mcpServerEndpoint.toolChangeNotification());
+        serverProperties.setResourceChangeNotification(mcpServerEndpoint.resourceChangeNotification());
+        serverProperties.setPromptChangeNotification(mcpServerEndpoint.promptChangeNotification());
         log.info("MCP Server properties: [{}]", serverProperties);
 
         serverInfo = new McpSchema.Implementation(serverProperties.getName(), serverProperties.getVersion());
@@ -79,11 +84,11 @@ public class McpServer {
 
     private void buildMcpServer() {
         capabilitiesBuilder = McpSchema.ServerCapabilities.builder();
-        if (serverProperties.getTransport() == TransportType.STREAMABLE_HTTP) {
-            transportProvider = StreamableHttpServerTransportProvider.builder()
-                    .withMcpEndpoint(serverProperties.getMcpEndpoint())
-                    .build();
-        } else if (serverProperties.getTransport() == TransportType.SSE) {
+        capabilitiesBuilder.tools(serverProperties.isToolChangeNotification());
+        capabilitiesBuilder.resources(true, serverProperties.isResourceChangeNotification());
+        capabilitiesBuilder.prompts(serverProperties.isPromptChangeNotification());
+
+        if (serverProperties.getTransport() == TransportType.SSE) {
             transportProvider = HttpServletSseServerTransportProvider.builder()
                     .baseUrl(serverProperties.getBaseUrl())
                     .messageEndpoint(serverProperties.getSseMessageEndpoint())
@@ -113,14 +118,30 @@ public class McpServer {
         List<McpServerFeatures.AsyncToolSpecification> toolSpecifications = buildAsyncToolSpecifications();
         if (!toolSpecifications.isEmpty()) {
             toolSpecifications.forEach(serverBuilder::withTool);
-            capabilitiesBuilder.tools(serverProperties.isToolChangeNotification());
         }
         log.info(String.format(MSG_REGISTER_TOOLS, toolSpecifications.size(), serverProperties.isToolChangeNotification()));
 
-        // TODO resources, prompts, rootsChangeConsumers
+        // resources
+        List<McpServerFeatures.AsyncResourceSpecification> resourceSpecifications = resourceProvider.allAsyncResources();
+        if (!resourceSpecifications.isEmpty()) {
+            resourceSpecifications.forEach(asyncResourceSpecification -> {
+                serverBuilder.withResource(asyncResourceSpecification.getResource().getUri(), asyncResourceSpecification);
+            });
+        }
+        log.info(String.format(MSG_REGISTER_RESOURCES, resourceSpecifications.size(), serverProperties.isResourceChangeNotification()));
+
+        // prompts
+        List<McpServerFeatures.AsyncPromptSpecification> promptSpecifications = promptProvider.allAsyncPrompts();
+        if (!promptSpecifications.isEmpty()) {
+            promptSpecifications.forEach(asyncPromptSpecification -> {
+                serverBuilder.withPrompt(asyncPromptSpecification.getPrompt().getName(), asyncPromptSpecification);
+            });
+        }
+        log.info(String.format(MSG_REGISTER_PROMPTS, promptSpecifications.size(), serverProperties.isPromptChangeNotification()));
 
         serverBuilder.serverCapabilities(capabilitiesBuilder.build());
         McpAsyncStreamableHttpServer streamableHttpServer = serverBuilder.build();
+        // StreamableHttpServer必须在这里对transportProvider进行赋值，否则在注册servlet时transportProvider为null将引起NPE
         transportProvider = streamableHttpServer.getTransportProvider();
     }
 
@@ -170,11 +191,24 @@ public class McpServer {
         List<McpServerFeatures.SyncToolSpecification> toolSpecifications = buildSyncToolSpecifications();
         if (!toolSpecifications.isEmpty()) {
             serverBuilder.tools(toolSpecifications);
-            capabilitiesBuilder.tools(serverProperties.isToolChangeNotification());
         }
         log.info(String.format(MSG_REGISTER_TOOLS, toolSpecifications.size(), serverProperties.isToolChangeNotification()));
 
-        // TODO resources, prompts, rootsChangeConsumers
+        // resources
+        List<McpServerFeatures.SyncResourceSpecification> syncResourceSpecifications = resourceProvider.allSyncResources();
+        if (!syncResourceSpecifications.isEmpty()) {
+            serverBuilder.resources(syncResourceSpecifications);
+        }
+        log.info(String.format(MSG_REGISTER_RESOURCES, syncResourceSpecifications.size(), serverProperties.isResourceChangeNotification()));
+
+        // prompts
+        List<McpServerFeatures.SyncPromptSpecification> syncPromptSpecifications = promptProvider.allSyncPrompts();
+        if (!syncPromptSpecifications.isEmpty()) {
+            serverBuilder.prompts(syncPromptSpecifications);
+        }
+        log.info(String.format(MSG_REGISTER_PROMPTS, syncPromptSpecifications.size(), serverProperties.isPromptChangeNotification()));
+
+        // TODO Resource Templates, roots, rootsChangeConsumers
 
         serverBuilder.capabilities(capabilitiesBuilder.build());
         serverBuilder.build();
@@ -190,11 +224,24 @@ public class McpServer {
         List<McpServerFeatures.AsyncToolSpecification> asyncToolSpecifications = buildAsyncToolSpecifications();
         if (!asyncToolSpecifications.isEmpty()) {
             serverBuilder.tools(asyncToolSpecifications);
-            capabilitiesBuilder.tools(serverProperties.isToolChangeNotification());
         }
         log.info(String.format(MSG_REGISTER_TOOLS, asyncToolSpecifications.size(), serverProperties.isToolChangeNotification()));
 
-        // TODO resources, prompts, rootsChangeConsumers
+        // resources
+        List<McpServerFeatures.AsyncResourceSpecification> asyncResourceSpecifications = resourceProvider.allAsyncResources();
+        if (!asyncResourceSpecifications.isEmpty()) {
+            serverBuilder.resources(asyncResourceSpecifications);
+        }
+        log.info(String.format(MSG_REGISTER_RESOURCES, asyncResourceSpecifications.size(), serverProperties.isResourceChangeNotification()));
+
+        // prompts
+        List<McpServerFeatures.AsyncPromptSpecification> asyncPromptSpecifications = promptProvider.allAsyncPrompts();
+        if (!asyncPromptSpecifications.isEmpty()) {
+            serverBuilder.prompts(asyncPromptSpecifications);
+        }
+        log.info(String.format(MSG_REGISTER_PROMPTS, asyncPromptSpecifications.size(), serverProperties.isPromptChangeNotification()));
+
+        // TODO Resource Templates, roots, rootsChangeConsumers
 
         serverBuilder.capabilities(capabilitiesBuilder.build());
         serverBuilder.build();
