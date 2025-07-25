@@ -20,6 +20,12 @@
 - `src/main/resources` 
   - `logback.xml` - 日志配置文件
 
+- `src/test/java` package `org.cafe.example.mcp`
+  - `SyncMcpClient.java` - 同步McpClient测试类
+
+- `src/test/resources`
+  - `logback.xml` - 日志配置文件
+
 ## 🎯 环境要求
 
 - Java 8
