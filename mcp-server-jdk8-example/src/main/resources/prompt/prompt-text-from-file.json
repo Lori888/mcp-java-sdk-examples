@@ -1,0 +1,12 @@
+{
+  "description": "这是prompt描述",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "type": "text",
+        "text": "这是prompt内容"
+      }
+    }
+  ]
+}

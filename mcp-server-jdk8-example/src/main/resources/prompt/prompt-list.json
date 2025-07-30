@@ -1,0 +1,35 @@
+{
+  "prompts": [
+    {
+      "name": "prompt-text-argument-from-file",
+      "description": "A test prompt",
+      "arguments": [
+        {
+          "name": "arg1",
+          "description": "First argument",
+          "required": true
+        },
+        {
+          "name": "arg2",
+          "description": "Second argument",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "prompt-text-from-file",
+      "description": "Test Prompt",
+      "arguments": [ ]
+    },
+    {
+      "name": "prompt-image",
+      "description": "Test Image Prompt",
+      "arguments": [ ]
+    },
+    {
+      "name": "prompt-embeddedResource-from-file",
+      "description": "Test Embedded Resources Prompt",
+      "arguments": [ ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "description": "Test prompt with argument description",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "type": "text",
+        "text": "Test prompt: 参数1: %s, 参数2: %s"
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "result": {
+    "description": "Test Embedded Resources prompt description",
+    "messages": [
+      {
+        "role": "user",
+        "content": {
+          "type": "resource",
+          "audience": [
+            "user"
+          ],
+          "resource": {
+            "uri": "resource://embeddedResource",
+            "mimeType": "text/plain",
+            "text": "Sample resource content"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -19,6 +19,7 @@ import reactor.core.scheduler.Schedulers;
 
 import javax.servlet.Servlet;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -42,7 +43,7 @@ public class McpServer {
     private McpSchema.ServerCapabilities.Builder capabilitiesBuilder;
     private McpServerTransportProvider transportProvider;
 
-    public void start() throws LifecycleException {
+    public void start() throws LifecycleException, IOException {
         log.info("Starting MCP Server...");
 
         processServerProperties();
@@ -82,7 +83,7 @@ public class McpServer {
         serverInfo = new McpSchema.Implementation(serverProperties.getName(), serverProperties.getVersion());
     }
 
-    private void buildMcpServer() {
+    private void buildMcpServer() throws IOException {
         capabilitiesBuilder = McpSchema.ServerCapabilities.builder();
         capabilitiesBuilder.tools(serverProperties.isToolChangeNotification());
         capabilitiesBuilder.resources(true, serverProperties.isResourceChangeNotification());
@@ -107,7 +108,7 @@ public class McpServer {
         }
     }
 
-    private void buildAsyncStreamableHttpServer() {
+    private void buildAsyncStreamableHttpServer() throws IOException {
         log.info("building async StreamableHttpServer...");
 
         McpAsyncStreamableHttpServer.Builder serverBuilder = McpAsyncStreamableHttpServer.builder()
@@ -133,9 +134,8 @@ public class McpServer {
         // prompts
         List<McpServerFeatures.AsyncPromptSpecification> promptSpecifications = promptProvider.allAsyncPrompts();
         if (!promptSpecifications.isEmpty()) {
-            promptSpecifications.forEach(asyncPromptSpecification -> {
-                serverBuilder.withPrompt(asyncPromptSpecification.getPrompt().getName(), asyncPromptSpecification);
-            });
+            promptSpecifications.forEach(asyncPromptSpecification ->
+                    serverBuilder.withPrompt(asyncPromptSpecification.getPrompt().getName(), asyncPromptSpecification));
         }
         log.info(String.format(MSG_REGISTER_PROMPTS, promptSpecifications.size(), serverProperties.isPromptChangeNotification()));
 
@@ -181,7 +181,7 @@ public class McpServer {
         return toolSpecifications;
     }
 
-    private void buildSyncServer() {
+    private void buildSyncServer() throws IOException {
         log.info("building sync server...");
 
         // Create the server with both tool and resource capabilities
@@ -214,7 +214,7 @@ public class McpServer {
         serverBuilder.build();
     }
 
-    private void buildAsyncServer() {
+    private void buildAsyncServer() throws IOException {
         log.info("building async server...");
 
         // Create the server with both tool and resource capabilities
@@ -285,7 +285,7 @@ public class McpServer {
 
         McpServer mcpServer = new McpServer();
         try {
-            new McpServer().start();
+            mcpServer.start();
         } catch (Exception e) {
             log.error("McpServer error:", e);
             mcpServer.stop();
