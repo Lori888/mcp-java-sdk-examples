@@ -1,0 +1,45 @@
+[
+  {
+    "name": "问候",
+    "description": "简单的问候",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "问候语句"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "targetBeanClass": "org.cafe.example.mcp.McpTool",
+    "targetMethodName": "sayHello"
+  },
+  {
+    "name": "getLandmark",
+    "description": "获取城市地标",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string",
+          "description": "城市名称"
+        },
+        "place": {
+          "type": "string",
+          "description": "地标名称"
+        }
+      },
+      "required": [
+        "city",
+        "place"
+      ],
+      "additionalProperties": false
+    },
+    "targetBeanClass": "org.cafe.example.mcp.McpTool",
+    "targetMethodName": "getFamous"
+  }
+]

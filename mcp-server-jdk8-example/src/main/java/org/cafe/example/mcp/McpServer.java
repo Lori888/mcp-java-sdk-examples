@@ -2,7 +2,6 @@ package org.cafe.example.mcp;
 
 import io.modelcontextprotocol.server.McpAsyncStreamableHttpServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
-import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -14,14 +13,10 @@ import org.apache.catalina.startup.Tomcat;
 import org.cafe.example.mcp.annotation.McpServerEndpoint;
 import org.cafe.example.mcp.util.ProcessUtils;
 import org.cafe.example.mcp.util.TimeUtils;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import javax.servlet.Servlet;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -32,13 +27,12 @@ public class McpServer {
     private static final String MSG_REGISTER_PROMPTS = "Registered prompts: %d, notification: %s";
     private static final String MCP_SERVLET_NAME = "mcpServlet";
 
-    private final Object targetBean = new McpServerTool();
     private final McpServerProperties serverProperties = new McpServerProperties();
+    private final ToolProvider toolProvider = new ToolProvider();
     private final ResourceProvider resourceProvider = new ResourceProvider();
     private final PromptProvider promptProvider = new PromptProvider();
 
     private Tomcat tomcat;
-    private McpServerEndpoint mcpServerEndpoint;
     private McpSchema.Implementation serverInfo;
     private McpSchema.ServerCapabilities.Builder capabilitiesBuilder;
     private McpServerTransportProvider transportProvider;
@@ -56,7 +50,7 @@ public class McpServer {
     }
 
     private void processServerProperties() {
-        mcpServerEndpoint = McpServerEndpointProcessor.resolveMcpServerEndpoint(targetBean.getClass().getName());
+        McpServerEndpoint mcpServerEndpoint = toolProvider.getEndpoint();
         assert mcpServerEndpoint != null;
 
         serverProperties.setName(mcpServerEndpoint.name());
@@ -116,7 +110,7 @@ public class McpServer {
                 .withMcpEndpoint(serverProperties.getMcpEndpoint());
 
         // tools
-        List<McpServerFeatures.AsyncToolSpecification> toolSpecifications = buildAsyncToolSpecifications();
+        List<McpServerFeatures.AsyncToolSpecification> toolSpecifications = toolProvider.allAsyncTools();
         if (!toolSpecifications.isEmpty()) {
             toolSpecifications.forEach(serverBuilder::withTool);
         }
@@ -145,42 +139,6 @@ public class McpServer {
         transportProvider = streamableHttpServer.getTransportProvider();
     }
 
-    private List<McpServerFeatures.AsyncToolSpecification> buildAsyncToolSpecifications() {
-        List<McpServerFeatures.AsyncToolSpecification> asyncToolSpecifications = new ArrayList<>();
-        List<McpServerFeatures.SyncToolSpecification> syncToolSpecifications = buildSyncToolSpecifications();
-        syncToolSpecifications.forEach(syncToolSpecification -> {
-            McpServerFeatures.AsyncToolSpecification asyncToolSpecification =
-                    new McpServerFeatures.AsyncToolSpecification(syncToolSpecification.getTool(),
-                            (exchange, map) -> Mono
-                                    .fromCallable(() -> syncToolSpecification.getCall().apply(new McpSyncServerExchange(exchange), map))
-                                    .subscribeOn(Schedulers.boundedElastic()));
-            asyncToolSpecifications.add(asyncToolSpecification);
-        });
-        return asyncToolSpecifications;
-    }
-
-    private List<McpServerFeatures.SyncToolSpecification> buildSyncToolSpecifications() {
-        List<McpServerFeatures.SyncToolSpecification> toolSpecifications = new ArrayList<>();
-        List<McpToolInfo> toolInfos = McpServerEndpointProcessor.resolveMcpServerTools(targetBean, mcpServerEndpoint);
-
-        toolInfos.forEach(toolInfo -> {
-            McpSchema.Tool tool = new McpSchema.Tool(toolInfo.getName(), toolInfo.getDescription(), toolInfo.getInputSchema());
-
-            McpServerFeatures.SyncToolSpecification toolSpecification =
-                    new McpServerFeatures.SyncToolSpecification(tool, (exchange, request) -> {
-                        try {
-                            String callResult = toolInfo.getMethod().invoke(toolInfo.getTargetBean(), request.values().toArray()).toString();
-                            // TODO mimeType
-                            return new McpSchema.CallToolResult(Collections.singletonList(new McpSchema.TextContent(callResult)), false);
-                        } catch (Exception e) {
-                            return new McpSchema.CallToolResult(Collections.singletonList(new McpSchema.TextContent(e.getMessage())), true);
-                        }
-                    });
-            toolSpecifications.add(toolSpecification);
-        });
-        return toolSpecifications;
-    }
-
     private void buildSyncServer() throws IOException {
         log.info("building sync server...");
 
@@ -188,7 +146,7 @@ public class McpServer {
         io.modelcontextprotocol.server.McpServer.SyncSpecification serverBuilder = io.modelcontextprotocol.server.McpServer.sync(transportProvider).serverInfo(serverInfo);
 
         // tools
-        List<McpServerFeatures.SyncToolSpecification> toolSpecifications = buildSyncToolSpecifications();
+        List<McpServerFeatures.SyncToolSpecification> toolSpecifications = toolProvider.allSyncTools();
         if (!toolSpecifications.isEmpty()) {
             serverBuilder.tools(toolSpecifications);
         }
@@ -221,7 +179,7 @@ public class McpServer {
         io.modelcontextprotocol.server.McpServer.AsyncSpecification serverBuilder = io.modelcontextprotocol.server.McpServer.async(transportProvider).serverInfo(serverInfo);
 
         // tools
-        List<McpServerFeatures.AsyncToolSpecification> asyncToolSpecifications = buildAsyncToolSpecifications();
+        List<McpServerFeatures.AsyncToolSpecification> asyncToolSpecifications = toolProvider.allAsyncTools();
         if (!asyncToolSpecifications.isEmpty()) {
             serverBuilder.tools(asyncToolSpecifications);
         }

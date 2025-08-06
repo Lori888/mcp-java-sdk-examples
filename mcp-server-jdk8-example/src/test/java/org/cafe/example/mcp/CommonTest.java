@@ -6,6 +6,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import org.cafe.example.mcp.util.FileUtils;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Objects;
 
 class CommonTest {
@@ -33,5 +34,19 @@ class CommonTest {
         promptContent = promptContent.replaceFirst("%s", "222");
         McpSchema.GetPromptResult promptResult = objectMapper.readValue(promptContent, McpSchema.GetPromptResult.class);
         System.out.println(promptResult);
+    }
+
+    @Test
+    void testGetMcpToolDefFromJsonFile() throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String toolContent = FileUtils.readFile(
+                Objects.requireNonNull(getClass().getClassLoader().getResource("tool/tool-list.json")).getPath());
+        System.out.println(toolContent);
+
+//        List<McpSchema.Tool> mcpToolInfoList = objectMapper.readValue(toolContent,
+//                objectMapper.getTypeFactory().constructCollectionType(List.class, McpSchema.Tool.class));
+        List<McpToolDef> mcpToolInfoList = objectMapper.readValue(toolContent,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, McpToolDef.class));
+        mcpToolInfoList.forEach(System.out::println);
     }
 }
