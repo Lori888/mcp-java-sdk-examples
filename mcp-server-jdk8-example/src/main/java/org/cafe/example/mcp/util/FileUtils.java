@@ -1,15 +1,85 @@
 package org.cafe.example.mcp.util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.spec.McpSchema;
+import org.cafe.example.mcp.McpToolDef;
+
 import java.io.*;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Objects;
 
 public class FileUtils {
 
     private FileUtils() {
+    }
+
+    /**
+     * 将具体的tool方法转换为MCP tools/list Response内容中的"tools"节点内容，并保存到文件中<br/>
+     * 注意：<br/>
+     * 1.文件已存在则将会覆盖原文件内容;<br/>
+     * 2.生成的内容中不含"description"，需要手动添加。<br/>
+     * （方法的"description"节点已存在、只需补充具体描述；参数的"inputSchema"-"properties"-"message"-"description"节点不存在、需补充整个节点）
+     *
+     * @param toolClz 将具体的tool方法所在类
+     * @param absoluteFilePath 要保存的文件绝对路径
+     * @throws JsonProcessingException
+     */
+    public static void createToolListJsonFile(Class toolClz, String absoluteFilePath) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        List<McpToolDef> toolDefList = new ArrayList<>();
+        Method[] declaredMethods = toolClz.getDeclaredMethods();
+        for (Method method : declaredMethods) {
+            McpToolDef toolDef = new McpToolDef();
+            toolDef.setName(method.getName());
+            toolDef.setDescription("");
+            toolDef.setTargetBeanClass(toolClz.getName());
+            toolDef.setTargetMethodName(method.getName());
+            String inputSchema = JsonSchemaGenerator.generateForMethodInput(method);
+            toolDef.setInputSchema(objectMapper.readValue(inputSchema, McpSchema.JsonSchema.class));
+
+            toolDefList.add(toolDef);
+        }
+
+        String json = objectMapper.writeValueAsString(toolDefList);
+        FileUtils.writeFile(absoluteFilePath, json);
+    }
+
+    public static String resolveFilePath(String absoluteFilePath) {
+        if (File.separator.equals("\\")) {
+            // Windows需要处理开头的 /、Linux/Mac则无需处理
+            absoluteFilePath = absoluteFilePath.startsWith("/") ? absoluteFilePath.substring(1) : absoluteFilePath;
+        }
+        return absoluteFilePath;
+    }
+
+    public static Path createParentDir(String absoluteFilePath) {
+        Path filePath = Paths.get(resolveFilePath(absoluteFilePath));
+        filePath.getParent().toFile().mkdirs();
+        return filePath;
+    }
+
+    /**
+     * 根据绝对路径文件名写入文件
+     *
+     * @param absoluteFilePath 绝对路径
+     * @param content          文件内容（UTF_8编码）
+     */
+    public static void writeFile(String absoluteFilePath, String content) {
+        Path filePath = createParentDir(absoluteFilePath);
+        try (OutputStream os = Files.newOutputStream(filePath)) {
+            os.write(content.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            throw new RuntimeException("Error writing file: " + absoluteFilePath, e);
+        }
     }
 
     /**
@@ -19,10 +89,7 @@ public class FileUtils {
      * @return 文件内容（UTF_8编码）；文件不存在或读取失败则抛出异常
      */
     public static String readFile(String absoluteFilePath) {
-        if (File.separator.equals("\\")) {
-            // Windows需要处理开头的 /、Linux/Mac则无需处理
-            absoluteFilePath = absoluteFilePath.startsWith("/") ? absoluteFilePath.substring(1) : absoluteFilePath;
-        }
+        absoluteFilePath = resolveFilePath(absoluteFilePath);
         try (InputStream is = Files.newInputStream(Paths.get(absoluteFilePath))) {
             byte[] fileData = readBytesFromFile(is);
             if (fileData.length > 0) {
@@ -44,10 +111,8 @@ public class FileUtils {
      */
     public static String[] readFileByName(String absolutePath, String fileName) {
         absolutePath = absolutePath.endsWith(File.separator) ? absolutePath : absolutePath + File.separator;
-        if (File.separator.equals("\\")) {
-            // Windows需要处理开头的 /、Linux/Mac则无需处理
-            absolutePath = absolutePath.startsWith("/") ? absolutePath.substring(1) : absolutePath;
-        }
+        absolutePath = resolveFilePath(absolutePath);
+
         String[] result = new String[2];
         // 查找fileName开头的文件
         for (String file : Objects.requireNonNull(new File(absolutePath).list())) {
