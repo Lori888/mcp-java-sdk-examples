@@ -9,6 +9,7 @@ import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.catalina.Context;
 import org.apache.catalina.LifecycleException;
+import org.apache.catalina.connector.Connector;
 import org.apache.catalina.startup.Tomcat;
 import org.cafe.example.mcp.annotation.McpServerEndpoint;
 import org.cafe.example.mcp.util.ProcessUtils;
@@ -227,7 +228,15 @@ public class McpServer {
         ctx.addChild(wrapper);
         ctx.addServletMappingDecoded("/*", MCP_SERVLET_NAME);
 
-        tomcat.getConnector(); // 默认创建一个 HTTP connector
+        Connector connector = tomcat.getConnector(); // 默认创建一个 HTTP connector
+        connector.setAsyncTimeout(10000); // 10 seconds timeout for async requests, default is 30 seconds
+        /*
+         * 配置 SO LINGER:on=true,linger=0
+         * 以确保收到客户端的 FIN 信号并确认后主动调用 close 关闭连接（避免连接停留在 CLOSE_WAIT 状态），但可能会导致最后传输的数据包丢失
+         */
+        connector.setProperty("socket.soLingerOn", "true");
+        connector.setProperty("socket.soLingerTime", "0");
+
         tomcat.start();
 
         String endpoint = serverProperties.getTransport() == TransportType.STREAMABLE_HTTP ?
